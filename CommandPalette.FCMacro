@@ -1,3 +1,12 @@
+# TODO: run action
+# TODO: case insensitive search
+# TODO: fuzzy search?
+# TODO: better visuals:
+#           - show the menu path to that item
+#           - show the keyboard shortcut for the item
+# 
+
+
 # Useful methods on QAction menu items
 # text(): The text of the menu item with '&' before the shortcut key.
 # toolTip(): on hover tooltip as html.
@@ -22,12 +31,52 @@
     
 
 # go()
-
 import PySide2
+
+def enumerateActions(menu):
+    actionList = []
+    for action in menu.actions():
+        if action.isSeparator():
+            pass
+        elif action.menu():
+            actionList.extend(enumerateActions(action.menu()))
+        else:
+            actionList.append(action)
+    return actionList
+
+def getMenuActions():
+    mw = Gui.getMainWindow()
+    menuBar = mw.menuBar()
+    return enumerateActions(menuBar)
+
+def getMenuItems():
+    def convertAction(action):
+        item = PySide2.QtWidgets.QListWidgetItem()
+        item.setText(action.text().replace('&', ''))
+        item.setToolTip(action.toolTip())
+        item.setIcon(action.icon())
+        return item
+    return [convertAction(action) for action in getMenuActions()]
+    
+
+class PaletteLineEdit(PySide2.QtWidgets.QLineEdit):
+    keyMappings = {}
+
+    def keyPressEvent(self, event):
+        keyFn = self.keyMappings.get(event.key())
+        if keyFn is not None:
+            keyFn()
+            return
+
+        super().keyPressEvent(event)
+
+    def setMappings(self, keyMappings):
+        self.keyMappings = keyMappings
 
 class CommandPalette:
     def show(self):
-        items = ["one", "two", "three", "four", "five"]
+        # items = ["one", "two", "three", "four", "five"]
+        items = getMenuItems()
         dialog = PySide2.QtWidgets.QWidget()
         dialog.setObjectName("CommandPalette")
         dialog.resize(300, 300)
@@ -35,9 +84,14 @@ class CommandPalette:
 
         vbox = PySide2.QtWidgets.QVBoxLayout(dialog)
 
-        searchBar = PySide2.QtWidgets.QLineEdit()
+        searchBar = PaletteLineEdit()
         searchBar.textChanged.connect(self.textChanged)
         searchBar.returnPressed.connect(self.returnPressed)
+        searchBar.setMappings({
+            PySide2.QtCore.Qt.Key.Key_Escape: self.escapePressed,
+            PySide2.QtCore.Qt.Key.Key_Down: self.downPressed,
+            PySide2.QtCore.Qt.Key.Key_Up: self.upPressed,
+        })
         vbox.addWidget(searchBar)
 
         commandList = PySide2.QtWidgets.QListWidget()
@@ -58,26 +112,43 @@ class CommandPalette:
 
 
     def textChanged(self, newText):
-        hasSelection = False
-        print("-----")
+        currentItemSet = False
         for i in range(0, self.commandList.count()):
             item = self.commandList.item(i)
-            # print(item.text())
             if newText in item.text():
-                print("shown")
                 item.setHidden(False)
-                if not hasSelection:
-                    item.setSelected(True)
-                    hasSelection = True
+                if not currentItemSet:
+                    self.commandList.setCurrentItem(item)
+                    currentItemSet = True
             else:
-                print("hidden")
                 item.setHidden(True)
 
     def returnPressed(self):
-        selection = self.commandList.selectedItems()
-        if selection:
+        # Run the selected action.
+        currentItem = self.commandList.currentItem()
+        if currentItem is not None:
             self.dialog.hide()
-            self.runCommand(selection[0])
+            self.runCommand(currentItem)
+
+    def escapePressed(self):
+        # Cancel -- hide the dialog.
+        self.dialog.hide()
+
+    def downPressed(self):
+        # Select the next unhidden action, if any.
+        currentRow = self.commandList.currentRow()
+        for i in range(currentRow + 1, self.commandList.count()):
+            if not self.commandList.item(i).isHidden():
+                self.commandList.setCurrentRow(i)
+                return
+
+    def upPressed(self):
+        # Select the previous unhidden action, if any.
+        currentRow = self.commandList.currentRow()
+        for i in range(currentRow - 1, -1, -1):
+            if not self.commandList.item(i).isHidden():
+                self.commandList.setCurrentRow(i)
+                return
 
     def runCommand(self, item):
         print("ListWidget", "ListWidget: " + item.text(), item)
