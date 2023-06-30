@@ -1,11 +1,12 @@
 # TODO: show disabled actions at the bottom of search
-# TODO: consider switching to a QDialog
 # TODO: better fuzzy search?
 # TODO: better visuals:
 #         see: https://stackoverflow.com/questions/41107202/pyqt-coloring-part-of-text-in-qlistwidget
 #           - better path: right-aligned + grey
 #           - show the keyboard shortcut for the item?
+#           - highlight matched parts of search
 #           - larger text
+# TODO: toggle visibility on keyboard shortcut if already displayed
 
 
 # Useful methods on QAction menu items
@@ -54,6 +55,20 @@ def getMenuItems():
     menuBar = mw.menuBar()
     return [convertAction(action, path) for action, path in enumerateActions(menuBar) if action is not None]
 
+
+class PaletteDialog(PySide2.QtWidgets.QDialog):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        # Hide the palette if it ever loses focus.
+        if event.type() == PySide2.QtCore.QEvent.WindowDeactivate:
+            self.hide()
+            return True
+        return False
+
+
 class PaletteLineEdit(PySide2.QtWidgets.QLineEdit):
     keyMappings = {}
 
@@ -92,10 +107,11 @@ class CommandPalette:
     MIN_DIALOG_HEIGHT = 400
     def activate(self):
         items = getMenuItems()
-        dialog = PySide2.QtWidgets.QWidget()
+        dialog = PaletteDialog(Gui.getMainWindow())
         dialog.setObjectName("CommandPalette")
         dialog.setMinimumWidth(self.MIN_DIALOG_WIDTH)
         dialog.setMinimumHeight(self.MIN_DIALOG_HEIGHT)
+        dialog.setWindowFlags(dialog.windowFlags() | PySide2.QtCore.Qt.FramelessWindowHint)
 
 
         vbox = PySide2.QtWidgets.QVBoxLayout(dialog)
@@ -104,7 +120,6 @@ class CommandPalette:
         searchBar.textChanged.connect(self.textChanged)
         searchBar.returnPressed.connect(self.returnPressed)
         searchBar.setMappings({
-            PySide2.QtCore.Qt.Key.Key_Escape: self.escapePressed,
             PySide2.QtCore.Qt.Key.Key_Down: self.downPressed,
             PySide2.QtCore.Qt.Key.Key_Up: self.upPressed,
         })
@@ -147,10 +162,6 @@ class CommandPalette:
         if currentItem is not None:
             self.dialog.hide()
             currentItem.runTrigger()
-
-    def escapePressed(self):
-        # Cancel -- hide the dialog.
-        self.dialog.hide()
 
     def downPressed(self):
         # Select the next unhidden action, if any.
