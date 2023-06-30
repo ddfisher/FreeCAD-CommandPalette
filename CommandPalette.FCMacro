@@ -1,8 +1,8 @@
 # TODO: fuzzy search?
 # TODO: better visuals:
 #         see: https://stackoverflow.com/questions/41107202/pyqt-coloring-part-of-text-in-qlistwidget
-#           - show the menu path to that item
-#           - show the keyboard shortcut for the item
+#           - better path: right-aligned + grey
+#           - show the keyboard shortcut for the item?
 
 
 # Useful methods on QAction menu items
@@ -11,53 +11,41 @@
 # shortcut(): shortcut keys for that action as a QKeySequence.
 # trigger(): invoke that action.
 
-# def go():
-#     mw = Gui.getMainWindow()
-#     menuBar = mw.menuBar()
-#     enumerateActions(menuBar)
-
-# def enumerateActions(menu, indent=0):
-#     indentStr = "  " * indent
-#     for action in menu.actions():
-#         if action.isSeparator():
-#             print(indentStr + "Separator action")
-#         elif action.menu():
-#             print(indentStr + f"Menu action: `{action.text()}`")
-#             enumerateActions(action.menu(), indent + 1)
-#         else:
-#             print(indentStr + f"Action: `{action.text()}`")
-    
-
-# go()
 import PySide2
 
-def enumerateActions(menu):
+def enumerateActions(menu, path=[]):
     actionList = []
     for action in menu.actions():
         if action.isSeparator():
             pass
         elif action.menu():
-            actionList.extend(enumerateActions(action.menu()))
+            actionList.extend(enumerateActions(action.menu(), path + [action.text()]))
         else:
-            actionList.append(action)
+            actionList.append((action, path))
     return actionList
 
-def getMenuActions():
-    mw = Gui.getMainWindow()
-    menuBar = mw.menuBar()
-    return enumerateActions(menuBar)
-
 def getMenuItems():
-    def convertAction(action):
+    def convertAction(action, path):
+        # For an unknown reason, there are a bunch of blank menu items -- filter them out.
+        if not action.text():
+            return None
+
+        pathText = "->".join(path)
+        fullText = f"{action.text()} ({pathText})"
+        # fixedText = action.text().replace('&', '')
+        fixedText = fullText.replace('&', '')
+
         item = PaletteListWidgetItem()
-        fixedText = action.text().replace('&', '')
         item.setText(fixedText)
         item.setSearchText(fixedText.casefold())
         item.setToolTip(action.toolTip())
         item.setIcon(action.icon())
         item.setTrigger(action.trigger)
         return item
-    return [convertAction(action) for action in getMenuActions()]
+
+    mw = Gui.getMainWindow()
+    menuBar = mw.menuBar()
+    return [convertAction(action, path) for action, path in enumerateActions(menuBar) if action is not None]
     
 class PaletteListWidgetItem(PySide2.QtWidgets.QListWidgetItem):
     _searchText = None
@@ -90,12 +78,14 @@ class PaletteLineEdit(PySide2.QtWidgets.QLineEdit):
         self.keyMappings = keyMappings
 
 class CommandPalette:
-    def show(self):
-        # items = ["one", "two", "three", "four", "five"]
+    MIN_DIALOG_WIDTH = 600
+    MIN_DIALOG_HEIGHT = 400
+    def activate(self):
         items = getMenuItems()
         dialog = PySide2.QtWidgets.QWidget()
         dialog.setObjectName("CommandPalette")
-        dialog.resize(300, 300)
+        dialog.setMinimumWidth(self.MIN_DIALOG_WIDTH)
+        dialog.setMinimumHeight(self.MIN_DIALOG_HEIGHT)
 
 
         vbox = PySide2.QtWidgets.QVBoxLayout(dialog)
@@ -117,7 +107,6 @@ class CommandPalette:
             commandList.addItem(item)
 
         commandList.itemClicked.connect(self.runCommand)
-        # print(commandList.count())
 
         commandList.show()
         dialog.show()
@@ -172,4 +161,4 @@ class CommandPalette:
 
 
 palette = CommandPalette()
-palette.show()
+palette.activate()
