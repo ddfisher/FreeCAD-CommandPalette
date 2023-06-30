@@ -1,4 +1,4 @@
-# TODO: fuzzy search?
+# TODO: better fuzzy search?
 # TODO: better visuals:
 #         see: https://stackoverflow.com/questions/41107202/pyqt-coloring-part-of-text-in-qlistwidget
 #           - better path: right-aligned + grey
@@ -54,8 +54,11 @@ class PaletteListWidgetItem(PySide2.QtWidgets.QListWidgetItem):
     def searchText(self):
         return self._searchText
 
-    def setSearchText(self,text):
+    def setSearchText(self, text):
         self._searchText = text
+
+    def matches(self, text):
+        return False
 
     def runTrigger(self):
         self._trigger()
@@ -118,10 +121,12 @@ class CommandPalette:
 
     def textChanged(self, newText):
         foldedText = newText.casefold()
+        foldedTerms = foldedText.split()
         currentItemSet = False
         for i in range(0, self.commandList.count()):
             item = self.commandList.item(i)
-            if foldedText in item.text().casefold():
+
+            if all(term in item.searchText() for term in foldedTerms):
                 item.setHidden(False)
                 if not currentItemSet:
                     self.commandList.setCurrentItem(item)
