@@ -1,10 +1,8 @@
-# TODO: run action
-# TODO: case insensitive search
 # TODO: fuzzy search?
 # TODO: better visuals:
+#         see: https://stackoverflow.com/questions/41107202/pyqt-coloring-part-of-text-in-qlistwidget
 #           - show the menu path to that item
 #           - show the keyboard shortcut for the item
-# 
 
 
 # Useful methods on QAction menu items
@@ -51,13 +49,31 @@ def getMenuActions():
 
 def getMenuItems():
     def convertAction(action):
-        item = PySide2.QtWidgets.QListWidgetItem()
-        item.setText(action.text().replace('&', ''))
+        item = PaletteListWidgetItem()
+        fixedText = action.text().replace('&', '')
+        item.setText(fixedText)
+        item.setSearchText(fixedText.casefold())
         item.setToolTip(action.toolTip())
         item.setIcon(action.icon())
+        item.setTrigger(action.trigger)
         return item
     return [convertAction(action) for action in getMenuActions()]
     
+class PaletteListWidgetItem(PySide2.QtWidgets.QListWidgetItem):
+    _searchText = None
+    _trigger = None
+
+    def searchText(self):
+        return self._searchText
+
+    def setSearchText(self,text):
+        self._searchText = text
+
+    def runTrigger(self):
+        self._trigger()
+
+    def setTrigger(self, trigger):
+        self._trigger = trigger
 
 class PaletteLineEdit(PySide2.QtWidgets.QLineEdit):
     keyMappings = {}
@@ -112,10 +128,11 @@ class CommandPalette:
 
 
     def textChanged(self, newText):
+        foldedText = newText.casefold()
         currentItemSet = False
         for i in range(0, self.commandList.count()):
             item = self.commandList.item(i)
-            if newText in item.text():
+            if foldedText in item.text().casefold():
                 item.setHidden(False)
                 if not currentItemSet:
                     self.commandList.setCurrentItem(item)
@@ -151,7 +168,7 @@ class CommandPalette:
                 return
 
     def runCommand(self, item):
-        print("ListWidget", "ListWidget: " + item.text(), item)
+        item.runTrigger()
 
 
 palette = CommandPalette()
