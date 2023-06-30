@@ -4,21 +4,84 @@
 # shortcut(): shortcut keys for that action as a QKeySequence.
 # trigger(): invoke that action.
 
-def go():
-    mw = Gui.getMainWindow()
-    menuBar = mw.menuBar()
-    enumerateActions(menuBar)
+# def go():
+#     mw = Gui.getMainWindow()
+#     menuBar = mw.menuBar()
+#     enumerateActions(menuBar)
 
-def enumerateActions(menu, indent=0):
-    indentStr = "  " * indent
-    for action in menu.actions():
-        if action.isSeparator():
-            print(indentStr + "Separator action")
-        elif action.menu():
-            print(indentStr + f"Menu action: `{action.text()}`")
-            enumerateActions(action.menu(), indent + 1)
-        else:
-            print(indentStr + f"Action: `{action.text()}`")
+# def enumerateActions(menu, indent=0):
+#     indentStr = "  " * indent
+#     for action in menu.actions():
+#         if action.isSeparator():
+#             print(indentStr + "Separator action")
+#         elif action.menu():
+#             print(indentStr + f"Menu action: `{action.text()}`")
+#             enumerateActions(action.menu(), indent + 1)
+#         else:
+#             print(indentStr + f"Action: `{action.text()}`")
     
 
-go()
+# go()
+
+import PySide2
+
+class CommandPalette:
+    def show(self):
+        items = ["one", "two", "three", "four", "five"]
+        dialog = PySide2.QtWidgets.QWidget()
+        dialog.setObjectName("CommandPalette")
+        dialog.resize(300, 300)
+
+
+        vbox = PySide2.QtWidgets.QVBoxLayout(dialog)
+
+        searchBar = PySide2.QtWidgets.QLineEdit()
+        searchBar.textChanged.connect(self.textChanged)
+        searchBar.returnPressed.connect(self.returnPressed)
+        vbox.addWidget(searchBar)
+
+        commandList = PySide2.QtWidgets.QListWidget()
+        vbox.addWidget(commandList)
+
+        for item in items:
+            commandList.addItem(item)
+
+        commandList.itemClicked.connect(self.runCommand)
+        # print(commandList.count())
+
+        commandList.show()
+        dialog.show()
+
+
+        self.commandList = commandList
+        self.dialog = dialog  # prevent dialog from being garbage collected
+
+
+    def textChanged(self, newText):
+        hasSelection = False
+        print("-----")
+        for i in range(0, self.commandList.count()):
+            item = self.commandList.item(i)
+            # print(item.text())
+            if newText in item.text():
+                print("shown")
+                item.setHidden(False)
+                if not hasSelection:
+                    item.setSelected(True)
+                    hasSelection = True
+            else:
+                print("hidden")
+                item.setHidden(True)
+
+    def returnPressed(self):
+        selection = self.commandList.selectedItems()
+        if selection:
+            self.dialog.hide()
+            self.runCommand(selection[0])
+
+    def runCommand(self, item):
+        print("ListWidget", "ListWidget: " + item.text(), item)
+
+
+palette = CommandPalette()
+palette.show()
