@@ -15,7 +15,7 @@
 # shortcut(): shortcut keys for that action as a QKeySequence.
 # trigger(): invoke that action.
 
-import PySide2
+from PySide import QtGui, QtCore
 
 def enumerateActions(menu, path=[]):
     actionList = []
@@ -56,20 +56,20 @@ def getMenuItems():
     return [convertAction(action, path) for action, path in enumerateActions(menuBar) if action is not None]
 
 
-class PaletteDialog(PySide2.QtWidgets.QDialog):
+class PaletteDialog(QtGui.QDialog):
     def __init__(self, parent):
         super().__init__(parent)
         self.installEventFilter(self)
 
     def eventFilter(self, obj, event):
         # Hide the palette if it ever loses focus.
-        if event.type() == PySide2.QtCore.QEvent.WindowDeactivate:
+        if event.type() == QtCore.QEvent.WindowDeactivate:
             self.hide()
             return True
         return False
 
 
-class PaletteLineEdit(PySide2.QtWidgets.QLineEdit):
+class PaletteLineEdit(QtGui.QLineEdit):
     keyMappings = {}
 
     def keyPressEvent(self, event):
@@ -83,7 +83,7 @@ class PaletteLineEdit(PySide2.QtWidgets.QLineEdit):
     def setMappings(self, keyMappings):
         self.keyMappings = keyMappings
 
-class PaletteListWidgetItem(PySide2.QtWidgets.QListWidgetItem):
+class PaletteListWidgetItem(QtGui.QListWidgetItem):
     _searchText = None
     _trigger = None
 
@@ -111,21 +111,21 @@ class CommandPalette:
         dialog.setObjectName("CommandPalette")
         dialog.setMinimumWidth(self.MIN_DIALOG_WIDTH)
         dialog.setMinimumHeight(self.MIN_DIALOG_HEIGHT)
-        dialog.setWindowFlags(dialog.windowFlags() | PySide2.QtCore.Qt.FramelessWindowHint)
+        dialog.setWindowFlags(dialog.windowFlags() | QtCore.Qt.FramelessWindowHint)
 
 
-        vbox = PySide2.QtWidgets.QVBoxLayout(dialog)
+        vbox = QtGui.QVBoxLayout(dialog)
 
         searchBar = PaletteLineEdit()
         searchBar.textChanged.connect(self.textChanged)
         searchBar.returnPressed.connect(self.returnPressed)
         searchBar.setMappings({
-            PySide2.QtCore.Qt.Key.Key_Down: self.downPressed,
-            PySide2.QtCore.Qt.Key.Key_Up: self.upPressed,
+            QtCore.Qt.Key.Key_Down: self.downPressed,
+            QtCore.Qt.Key.Key_Up: self.upPressed,
         })
         vbox.addWidget(searchBar)
 
-        commandList = PySide2.QtWidgets.QListWidget()
+        commandList = QtGui.QListWidget()
         vbox.addWidget(commandList)
 
         for item in items:
