@@ -1,8 +1,11 @@
+# TODO: show disabled actions at the bottom of search
+# TODO: consider switching to a QDialog
 # TODO: better fuzzy search?
 # TODO: better visuals:
 #         see: https://stackoverflow.com/questions/41107202/pyqt-coloring-part-of-text-in-qlistwidget
 #           - better path: right-aligned + grey
 #           - show the keyboard shortcut for the item?
+#           - larger text
 
 
 # Useful methods on QAction menu items
@@ -30,6 +33,10 @@ def getMenuItems():
         if not action.text():
             return None
 
+        # For now, don't include disabled actions.
+        if not action.isEnabled():
+            return None
+
         pathText = "->".join(path)
         fullText = f"{action.text()} ({pathText})"
         # fixedText = action.text().replace('&', '')
@@ -46,7 +53,21 @@ def getMenuItems():
     mw = Gui.getMainWindow()
     menuBar = mw.menuBar()
     return [convertAction(action, path) for action, path in enumerateActions(menuBar) if action is not None]
-    
+
+class PaletteLineEdit(PySide2.QtWidgets.QLineEdit):
+    keyMappings = {}
+
+    def keyPressEvent(self, event):
+        keyFn = self.keyMappings.get(event.key())
+        if keyFn is not None:
+            keyFn()
+            return
+
+        super().keyPressEvent(event)
+
+    def setMappings(self, keyMappings):
+        self.keyMappings = keyMappings
+
 class PaletteListWidgetItem(PySide2.QtWidgets.QListWidgetItem):
     _searchText = None
     _trigger = None
@@ -65,20 +86,6 @@ class PaletteListWidgetItem(PySide2.QtWidgets.QListWidgetItem):
 
     def setTrigger(self, trigger):
         self._trigger = trigger
-
-class PaletteLineEdit(PySide2.QtWidgets.QLineEdit):
-    keyMappings = {}
-
-    def keyPressEvent(self, event):
-        keyFn = self.keyMappings.get(event.key())
-        if keyFn is not None:
-            keyFn()
-            return
-
-        super().keyPressEvent(event)
-
-    def setMappings(self, keyMappings):
-        self.keyMappings = keyMappings
 
 class CommandPalette:
     MIN_DIALOG_WIDTH = 600
@@ -109,7 +116,7 @@ class CommandPalette:
         for item in items:
             commandList.addItem(item)
 
-        commandList.itemClicked.connect(self.runCommand)
+        commandList.itemClicked.connect(self.itemClicked)
 
         commandList.show()
         dialog.show()
@@ -139,7 +146,7 @@ class CommandPalette:
         currentItem = self.commandList.currentItem()
         if currentItem is not None:
             self.dialog.hide()
-            self.runCommand(currentItem)
+            currentItem.runTrigger()
 
     def escapePressed(self):
         # Cancel -- hide the dialog.
@@ -161,7 +168,8 @@ class CommandPalette:
                 self.commandList.setCurrentRow(i)
                 return
 
-    def runCommand(self, item):
+    def itemClicked(self, item):
+        self.dialog.hide()
         item.runTrigger()
 
 
