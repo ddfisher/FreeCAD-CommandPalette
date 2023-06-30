@@ -1,0 +1,24 @@
+# Useful methods on QAction menu items
+# text(): The text of the menu item with '&' before the shortcut key.
+# toolTip(): on hover tooltip as html.
+# shortcut(): shortcut keys for that action as a QKeySequence.
+# trigger(): invoke that action.
+
+def go():
+    mw = Gui.getMainWindow()
+    menuBar = mw.menuBar()
+    enumerateActions(menuBar)
+
+def enumerateActions(menu, indent=0):
+    indentStr = "  " * indent
+    for action in menu.actions():
+        if action.isSeparator():
+            print(indentStr + "Separator action")
+        elif action.menu():
+            print(indentStr + f"Menu action: `{action.text()}`")
+            enumerateActions(action.menu(), indent + 1)
+        else:
+            print(indentStr + f"Action: `{action.text()}`")
+    
+
+go()
